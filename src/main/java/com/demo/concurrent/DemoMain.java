@@ -5,11 +5,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-import com.demo.concurrent.KeyLocker.KeyLockerWorkThread;
+import com.demo.concurrent.KeyLocker.KeyLockerThreadWorker;
 
 public class DemoMain {
 	
 	public static void main(String[] args) throws Exception {
+		test();
+	}
+	
+	private static void test() {
 		List<String> phoneList = new ArrayList<>();
 		phoneList.add("13900000000");
 		phoneList.add("13911111111");
@@ -26,20 +30,17 @@ public class DemoMain {
 //					waitThread(5);
 					for (String phone : phoneList) {
 //						waitThread(2);
-						KeyLockerWorkThread thread = new KeyLockerWorkThread() {
+						kl.addWorker(new KeyLockerThreadWorker(phone) {
 							@Override
-							public void runWork() {
+							protected void runWork() {
 								System.out.println(Thread.currentThread().getName() + " , " + Clock.systemUTC().millis() + " : working for , " + phone);
 								waitFixThread(2);
 							}
-						};
-						kl.addWorker(phone, thread);
+						});
 					}
 				}
 			}.start();
 		}
-		
-		Thread.sleep(10000000);
 	}
 	
 	private static void waitThread(int max) {

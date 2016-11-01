@@ -13,16 +13,20 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.springframework.util.Assert;
 
 /**
- * 根据传入主键的值进行判断，如果传入的值已经在运行中，则进行等待，否则启动运行
+ * <pre>
+ * Java正常的并发操作一般都是限制并发数量，如果是希望对某个值进行并发限制，目前没有找到已有的方法。
+ * 所以实现以下代码，根据传入主键的值进行判断，如果传入的值已经在运行中，则进行等待，否则启动运行。
+ * 也就是对于不同的键值，是处于并发操作的，但对于相同键值，是需要串行处理的
+ * </pre>
  * 
  * @author gary
  *
  */
 public class KeyLocker extends Thread {
 
-	private ThreadPoolExecutor executor = null;
+	private static ThreadPoolExecutor executor = null;
 	private volatile static ConcurrentMap<String, Object> workList = new ConcurrentHashMap<>();
-	private volatile Queue<KeyObjectMap> keyList = new ConcurrentLinkedQueue<>();
+	private volatile static Queue<KeyObjectMap> keyList = new ConcurrentLinkedQueue<>();
 	private static Lock lock = new ReentrantLock();
 
 	private static KeyLocker instance = null;
@@ -45,12 +49,10 @@ public class KeyLocker extends Thread {
 		return instance;
 	}
 
-	public KeyLocker addWorker(String key, KeyLockerWorkThread thread) {
-		Assert.notNull(key, "The key cannot be null");
-		Assert.hasLength(key, "Key must not be empty");
-
-		keyList.add(new KeyObjectMap(key, thread));
-
+	public KeyLocker addWorker(KeyLockerThreadWorker worker) {
+		Assert.notNull(worker.getKey(), "The key cannot be null");
+		Assert.hasLength(worker.getKey(), "Key must not be empty");
+		keyList.add(new KeyObjectMap(worker.getKey(), worker));
 		return this;
 	}
 
@@ -63,13 +65,14 @@ public class KeyLocker extends Thread {
 				lock.lock();
 				if (!workList.containsKey(data.getKey())) {
 					workList.putIfAbsent(data.getKey(), data.getData());
-					ite.remove();
 					executor.execute(data.getData());
+					ite.remove();
 				}
 				lock.unlock();
 			}
 			try {
 				Thread.sleep(20);
+				System.out.println("Sleep 20......");
 			} catch (InterruptedException e) {
 			}
 		}
@@ -77,9 +80,9 @@ public class KeyLocker extends Thread {
 
 	private class KeyObjectMap {
 		private String key;
-		private KeyLockerWorkThread data;
+		private KeyLockerThreadWorker data;
 
-		public KeyObjectMap(String key, KeyLockerWorkThread data) {
+		public KeyObjectMap(String key, KeyLockerThreadWorker data) {
 			this.key = key;
 			this.data = data;
 			this.data.setKey(key);
@@ -89,15 +92,23 @@ public class KeyLocker extends Thread {
 			return key;
 		}
 
-		public KeyLockerWorkThread getData() {
+		public KeyLockerThreadWorker getData() {
 			return data;
 		}
 
 	}
 
-	public static abstract class KeyLockerWorkThread extends Thread {
+	public static abstract class KeyLockerThreadWorker extends Thread {
 
 		private String key;
+
+		public KeyLockerThreadWorker(String key) {
+			this.key = key;
+		}
+		
+		public KeyLockerThreadWorker(KeyMaker keyMaker) {
+			this(keyMaker.toKey());
+		}
 
 		public String getKey() {
 			return key;
@@ -119,6 +130,10 @@ public class KeyLocker extends Thread {
 			workList.remove(key);
 		}
 
-		public abstract void runWork();
+		protected abstract void runWork();
+	}
+	
+	public interface KeyMaker {
+		String toKey();
 	}
 }
