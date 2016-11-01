@@ -57,7 +57,7 @@ public class KeyLocker extends Thread {
 	}
 
 	public void run() {
-		while (true) {
+		for (;;) {
 			Iterator<KeyObjectMap> ite = keyList.iterator();
 			while (ite.hasNext()) {
 				KeyObjectMap data = ite.next();
@@ -65,7 +65,7 @@ public class KeyLocker extends Thread {
 				lock.lock();
 				if (!workList.containsKey(data.getKey())) {
 					workList.putIfAbsent(data.getKey(), data.getData());
-					executor.execute(data.getData());
+					executor.submit(data.getData());
 					ite.remove();
 				}
 				lock.unlock();
