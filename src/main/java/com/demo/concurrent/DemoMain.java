@@ -65,11 +65,28 @@ public class DemoMain {
 									new User(m++, "Hello4", "111"),
 									new User(m++, "Hello5", "222"),
 									new User(m++, "Hello6", "222"),
+									new User(m++, "Hello7", "111"),
+									new User(m++, "Hello7", "111"),
+									new User(m++, "Hello7", "111"),
+									new User(m++, "Hello7", "111"),
+									new User(m++, "Hello7", "111"),
+									new User(m++, "Hello7", "111"),
+									new User(m++, "Hello7", "111"),
 									new User(m++, "Hello7", "111")
 								).collect(Collectors.toList());
 		
 		ParallelWithDifferentKeyExecutor<Integer, User> kl = new ParallelWithDifferentKeyExecutor<>(5);
-		kl.addWorkers(userList, User::getMobile, User::getId);
+		kl.addWorkers(userList, User::getMobile, user -> {
+			try {
+				System.out.println("Start: " + Thread.currentThread().getName() + " , " + Clock.systemUTC().millis() + " : working for , " + user.getId() + " / " + user.getMobile());
+				Thread.sleep(new Random().nextInt(5) * 1000);
+				return user.getId();
+			} catch (InterruptedException e) {
+			} finally {
+				System.out.println("End: " + Thread.currentThread().getName() + " , " + Clock.systemUTC().millis() + " : working for , " + user.getId() + " / " + user.getMobile());
+			}
+			return user.getId();
+		});
 		for (Future<Integer> future : kl.getResults()) {
 			try { 
 				System.out.println(future.get());

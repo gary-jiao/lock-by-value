@@ -78,14 +78,20 @@ public class ParallelWithDifferentKeyExecutor<T, M> {
 			Iterator<DifferentKeyThreadWorker<T, M>> ite = keyList.iterator();
 			while (ite.hasNext()) {
 				DifferentKeyThreadWorker<T, M> data = ite.next();
-
-				lock.lock();
-				if (!workList.containsKey(data.getKey())) {
-					workList.putIfAbsent(data.getKey(), data);
+				
+				//使用Java自带的保证原子操作的方法完成，避免使用锁
+				workList.computeIfAbsent(data.getKey(), k -> {
 					resultList.add(executor.submit(data));
 					ite.remove();
-				}
-				lock.unlock();
+					return data; 
+				});
+//				lock.lock();
+//				if (!workList.containsKey(data.getKey())) {
+//					workList.putIfAbsent(data.getKey(), data);
+//					resultList.add(executor.submit(data));
+//					ite.remove();
+//				}
+//				lock.unlock();
 			}
 			if (keyList.isEmpty()) break;
 			try {
