@@ -31,7 +31,7 @@ public class DemoMain {
 								).collect(Collectors.toList());
 		
 		ParallelWithDifferentKeyExecutor<Integer, User> kl = new ParallelWithDifferentKeyExecutor<>(5);
-		kl.addWorkers(userList, (user) -> user.getMobile(), (user) -> {
+		kl.addWorkers(userList, user -> user.getMobile(), user -> {
 			if (user.getId() == 5) throw new RuntimeException("test error");
 			return user.getId();
 		});

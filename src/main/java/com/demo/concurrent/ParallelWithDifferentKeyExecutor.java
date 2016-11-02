@@ -42,8 +42,8 @@ public class ParallelWithDifferentKeyExecutor<T, M> {
 	private List<Future<T>> resultList = new ArrayList<>();
 	
 	public ParallelWithDifferentKeyExecutor() {
-		//如果不指定线程数量，就默认取CPU的核数
-		this(Runtime.getRuntime().availableProcessors());
+		//如果不指定线程数量，就默认取CPU核数的2倍
+		this(Runtime.getRuntime().availableProcessors() * 2);
 	}
 
 	public ParallelWithDifferentKeyExecutor(int threadCount) {
