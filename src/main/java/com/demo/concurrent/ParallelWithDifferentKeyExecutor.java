@@ -144,10 +144,12 @@ public class ParallelWithDifferentKeyExecutor<T, M> {
 
 	}
 	
+	@FunctionalInterface
 	public interface ThreadWorker<T, M> {
 		T runWork(M data);
 	}
 	
+	@FunctionalInterface
 	public interface KeyMaker<M> {
 		String toKey(M object);
 	}

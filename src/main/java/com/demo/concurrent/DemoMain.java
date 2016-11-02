@@ -31,10 +31,7 @@ public class DemoMain {
 								).collect(Collectors.toList());
 		
 		ParallelWithDifferentKeyExecutor<Integer, User> kl = new ParallelWithDifferentKeyExecutor<>(5);
-		kl.addWorkers(userList, user -> user.getMobile(), user -> {
-			if (user.getId() == 5) throw new RuntimeException("test error");
-			return user.getId();
-		});
+		kl.addWorkers(userList, User::getMobile, User::getId);
 		for (Future<Integer> future : kl.getResults()) {
 			try { 
 				System.out.println(future.get());
