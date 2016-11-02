@@ -2,6 +2,7 @@ package com.demo.concurrent;
 
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
@@ -9,12 +10,49 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.demo.concurrent.DemoMain.User;
 import com.demo.concurrent.ParallelWithDifferentKeyExecutor.DifferentKeyThreadWorker;
 
 public class DemoMain {
 	
 	public static void main(String[] args) throws Exception {
 		test2();
+	}
+	
+	/**
+	 * 想要使用Java8自带的Lambda写法来完成重复号码在同一线程内操作的功能，但貌似还没有实现
+	 * @throws Exception
+	 */
+	private static void test3() throws Exception {
+		int m = 1;
+		List<User> userList = Arrays.asList(
+									new User(m++, "Hello", "111"),
+									new User(m++, "Hello1", "222"),
+									new User(m++, "Hello2", "222"),
+									new User(m++, "Hello3", "222"),
+									new User(m++, "Hello4", "111"),
+									new User(m++, "Hello5", "222"),
+									new User(m++, "Hello6", "222"),
+									new User(m++, "Hello7", "111")
+								);
+		
+		userList.parallelStream()
+					 .collect(Collectors.groupingBy(User::getMobile))
+					 .entrySet()
+					 	.parallelStream()			//本意是希望这里产生多个线程
+					 	.forEach(entry -> {
+					 		entry.getValue()
+						 		//这里本来不想使用parallelStream，通过前面产生的多线程，在每个线程内部单线程运行
+								//但实际运行下来，这里如果使用stream，则所有数据只是在单线程内运行了
+					 				.parallelStream()
+					 				.forEach(user -> {
+					 					try {
+					 						Thread.sleep(new Random().nextInt(5) * 1000);
+					 					} catch (InterruptedException e) {
+					 					}
+					 					System.out.println(Thread.currentThread().getName() + " , " + Clock.systemUTC().millis() + " : working for , " + user.getId() + " / " + user.getUsername() + " / " + user.getMobile());
+					 				});
+					 	});
 	}
 	
 	private static void test2() throws Exception {
