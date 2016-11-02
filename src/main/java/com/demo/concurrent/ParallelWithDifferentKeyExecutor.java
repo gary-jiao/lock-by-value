@@ -139,7 +139,7 @@ public class ParallelWithDifferentKeyExecutor<T, M> {
 
 		@Override
 		public String toString() {
-			return "KeyLockerThreadWorker [key=" + key + ", data=" + data + ", worker=" + worker + "]";
+			return "DifferentKeyThreadWorker [key=" + key + ", data=" + data + ", worker=" + worker + "]";
 		}
 
 	}
