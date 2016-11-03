@@ -10,17 +10,16 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.demo.concurrent.DemoMain.User;
 import com.demo.concurrent.ParallelWithDifferentKeyExecutor.DifferentKeyThreadWorker;
 
 public class DemoMain {
 	
 	public static void main(String[] args) throws Exception {
-		test2();
+		test3();
 	}
 	
 	/**
-	 * 想要使用Java8自带的Lambda写法来完成重复号码在同一线程内操作的功能，但貌似还没有实现
+	 * 想要使用Java8自带的Lambda写法来完成重复号码在同一线程内操作的功能
 	 * @throws Exception
 	 */
 	private static void test3() throws Exception {
@@ -36,23 +35,19 @@ public class DemoMain {
 									new User(m++, "Hello7", "111")
 								);
 		
-		userList.parallelStream()
-					 .collect(Collectors.groupingBy(User::getMobile))
-					 .entrySet()
-					 	.parallelStream()			//本意是希望这里产生多个线程
-					 	.forEach(entry -> {
-					 		entry.getValue()
-						 		//这里本来不想使用parallelStream，通过前面产生的多线程，在每个线程内部单线程运行
-								//但实际运行下来，这里如果使用stream，则所有数据只是在单线程内运行了
-					 				.parallelStream()
-					 				.forEach(user -> {
-					 					try {
-					 						Thread.sleep(new Random().nextInt(5) * 1000);
-					 					} catch (InterruptedException e) {
-					 					}
-					 					System.out.println(Thread.currentThread().getName() + " , " + Clock.systemUTC().millis() + " : working for , " + user.getId() + " / " + user.getUsername() + " / " + user.getMobile());
-					 				});
-					 	});
+		ParallelWithDifferentKeyStreamExecutor<User, Integer> kl = new ParallelWithDifferentKeyStreamExecutor<>(5);
+		kl.addWorkers(userList, User::getMobile, user -> {
+			try {
+				System.out.println("Start: " + Thread.currentThread().getName() + " , " + Clock.systemUTC().millis() + " : working for , " + user.getId() + " / " + user.getMobile());
+				Thread.sleep(new Random().nextInt(5) * 1000);
+				return user.getId();
+			} catch (InterruptedException e) {
+			} finally {
+				System.out.println("End: " + Thread.currentThread().getName() + " , " + Clock.systemUTC().millis() + " : working for , " + user.getId() + " / " + user.getMobile());
+			}
+			return user.getId();
+		});
+		kl.getResults();
 	}
 	
 	private static void test2() throws Exception {
@@ -75,7 +70,7 @@ public class DemoMain {
 									new User(m++, "Hello7", "111")
 								).collect(Collectors.toList());
 		
-		ParallelWithDifferentKeyExecutor<Integer, User> kl = new ParallelWithDifferentKeyExecutor<>(5);
+		ParallelWithDifferentKeyExecutor<User, Integer> kl = new ParallelWithDifferentKeyExecutor<>(5);
 		kl.addWorkers(userList, User::getMobile, user -> {
 			try {
 				System.out.println("Start: " + Thread.currentThread().getName() + " , " + Clock.systemUTC().millis() + " : working for , " + user.getId() + " / " + user.getMobile());

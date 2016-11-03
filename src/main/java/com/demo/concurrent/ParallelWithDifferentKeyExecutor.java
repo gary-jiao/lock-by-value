@@ -13,6 +13,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -29,17 +30,17 @@ import org.springframework.util.Assert;
  * @author gary
  *
  */
-public class ParallelWithDifferentKeyExecutor<T, M> {
+public class ParallelWithDifferentKeyExecutor<M, R> {
 	
 	private static Logger logger = LoggerFactory.getLogger(ParallelWithDifferentKeyExecutor.class);
 	
 	private volatile static ConcurrentMap<String, Object> workList = new ConcurrentHashMap<>();
 	
 	private ThreadPoolExecutor executor = null;
-	private Queue<DifferentKeyThreadWorker<T, M>> keyList = new ConcurrentLinkedQueue<>();
+	private Queue<DifferentKeyThreadWorker<M, R>> keyList = new ConcurrentLinkedQueue<>();
 	private Lock lock = new ReentrantLock();
 	private Boolean isRunning = false;
-	private List<Future<T>> resultList = new ArrayList<>();
+	private List<Future<R>> resultList = new ArrayList<>();
 	
 	public ParallelWithDifferentKeyExecutor() {
 		//如果不指定线程数量，就默认取CPU核数的2倍
@@ -50,8 +51,8 @@ public class ParallelWithDifferentKeyExecutor<T, M> {
 		this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(threadCount);
 	}
 	
-	public ParallelWithDifferentKeyExecutor<T, M> addWorkers(List<M> dataList, KeyMaker<M> maker, ThreadWorker<T, M> threadWorker) {
-		keyList.addAll(dataList.parallelStream().map(data -> new DifferentKeyThreadWorker<T, M>(maker.toKey(data), data, threadWorker){}).collect(Collectors.toList()));
+	public ParallelWithDifferentKeyExecutor<M, R> addWorkers(List<M> dataList, Function<M, String> maker, Function<M, R> threadWorker) {
+		keyList.addAll(dataList.parallelStream().map(data -> new DifferentKeyThreadWorker<M, R>(maker.apply(data), data, threadWorker){}).collect(Collectors.toList()));
 		return this;
 	}
 
@@ -59,14 +60,14 @@ public class ParallelWithDifferentKeyExecutor<T, M> {
 	 * @param worker
 	 * @return
 	 */
-	public ParallelWithDifferentKeyExecutor<T, M> addWorker(DifferentKeyThreadWorker<T, M> worker) {
+	public ParallelWithDifferentKeyExecutor<M, R> addWorker(DifferentKeyThreadWorker<M, R> worker) {
 		Assert.notNull(worker.getKey(), "The key cannot be null");
 		Assert.hasLength(worker.getKey(), "Key must not be empty");
 		keyList.add(worker);
 		return this;
 	}
 
-	protected ParallelWithDifferentKeyExecutor<T, M> run() {
+	protected ParallelWithDifferentKeyExecutor<M, R> run() {
 		try {
 			lock.lock();
 			if (isRunning) return this;
@@ -75,9 +76,9 @@ public class ParallelWithDifferentKeyExecutor<T, M> {
 			lock.unlock();
 		}
 		for (;;) {
-			Iterator<DifferentKeyThreadWorker<T, M>> ite = keyList.iterator();
+			Iterator<DifferentKeyThreadWorker<M, R>> ite = keyList.iterator();
 			while (ite.hasNext()) {
-				DifferentKeyThreadWorker<T, M> data = ite.next();
+				DifferentKeyThreadWorker<M, R> data = ite.next();
 				
 				//使用Java自带的保证原子操作的方法完成，避免使用锁
 				workList.computeIfAbsent(data.getKey(), k -> {
@@ -85,13 +86,6 @@ public class ParallelWithDifferentKeyExecutor<T, M> {
 					ite.remove();
 					return data; 
 				});
-//				lock.lock();
-//				if (!workList.containsKey(data.getKey())) {
-//					workList.putIfAbsent(data.getKey(), data);
-//					resultList.add(executor.submit(data));
-//					ite.remove();
-//				}
-//				lock.unlock();
 			}
 			if (keyList.isEmpty()) break;
 			try {
@@ -103,7 +97,7 @@ public class ParallelWithDifferentKeyExecutor<T, M> {
 		return this;
 	}
 	
-	public List<Future<T>> getResults() {
+	public List<Future<R>> getResults() {
 		logger.info("The size of keyList is: " + keyList.size());
 		if (!keyList.isEmpty()) run();
 		while (!keyList.isEmpty()) ;
@@ -111,13 +105,13 @@ public class ParallelWithDifferentKeyExecutor<T, M> {
 		return this.resultList;
 	}
 
-	public static abstract class DifferentKeyThreadWorker<T, M> implements Callable<T> {
+	public static abstract class DifferentKeyThreadWorker<M, R> implements Callable<R> {
 
 		private String key;
 		private M data;
-		private ThreadWorker<T, M> worker;
+		private Function<M, R> worker;
 
-		public DifferentKeyThreadWorker(String key, M data, ThreadWorker<T, M> worker) {
+		public DifferentKeyThreadWorker(String key, M data, Function<M, R> worker) {
 			this.key = key;
 			this.data = data;
 			this.worker = worker;
@@ -131,9 +125,9 @@ public class ParallelWithDifferentKeyExecutor<T, M> {
 			return this.data;
 		}
 		
-		public T call() throws Exception {
+		public R call() throws Exception {
 			try {
-				return worker.runWork(data);
+				return worker.apply(data);
 			} finally {
 				releaseWork();
 			}
@@ -147,16 +141,5 @@ public class ParallelWithDifferentKeyExecutor<T, M> {
 		public String toString() {
 			return "DifferentKeyThreadWorker [key=" + key + ", data=" + data + ", worker=" + worker + "]";
 		}
-
-	}
-	
-	@FunctionalInterface
-	public interface ThreadWorker<T, M> {
-		T runWork(M data);
-	}
-	
-	@FunctionalInterface
-	public interface KeyMaker<M> {
-		String toKey(M object);
 	}
 }
