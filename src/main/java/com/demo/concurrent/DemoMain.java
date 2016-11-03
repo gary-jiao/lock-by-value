@@ -25,15 +25,22 @@ public class DemoMain {
 	private static void test3() throws Exception {
 		int m = 1;
 		List<User> userList = Arrays.asList(
-									new User(m++, "Hello", "111"),
-									new User(m++, "Hello1", "222"),
-									new User(m++, "Hello2", "222"),
-									new User(m++, "Hello3", "222"),
-									new User(m++, "Hello4", "111"),
-									new User(m++, "Hello5", "222"),
-									new User(m++, "Hello6", "222"),
-									new User(m++, "Hello7", "111")
-								);
+				new User(m++, "Hello", "111"),
+				new User(m++, "Hello1", "222"),
+				new User(m++, "Hello2", "222"),
+				new User(m++, "Hello3", "222"),
+				new User(m++, "Hello4", "111"),
+				new User(m++, "Hello5", "222"),
+				new User(m++, "Hello6", "222"),
+				new User(m++, "Hello7", "111"),
+				new User(m++, "Hello7", "111"),
+				new User(m++, "Hello7", "111"),
+				new User(m++, "Hello7", "111"),
+				new User(m++, "Hello7", "111"),
+				new User(m++, "Hello7", "111"),
+				new User(m++, "Hello7", "111"),
+				new User(m++, "Hello7", "111")
+		);
 		
 		ParallelWithDifferentKeyStreamExecutor<User, Integer> kl = new ParallelWithDifferentKeyStreamExecutor<>(5);
 		kl.addWorkers(userList, User::getMobile, user -> {
@@ -42,6 +49,7 @@ public class DemoMain {
 				Thread.sleep(new Random().nextInt(5) * 1000);
 				return user.getId();
 			} catch (InterruptedException e) {
+				e.printStackTrace();
 			} finally {
 				System.out.println("End: " + Thread.currentThread().getName() + " , " + Clock.systemUTC().millis() + " : working for , " + user.getId() + " / " + user.getMobile());
 			}

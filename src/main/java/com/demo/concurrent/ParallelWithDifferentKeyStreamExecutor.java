@@ -54,7 +54,7 @@ public class ParallelWithDifferentKeyStreamExecutor<M, R> {
 					throw new RuntimeException(e);
 				}
 				return queue;
-			}).thenApply((queue) -> {
+			}).thenApplyAsync((queue) -> {
 				try {
 					M obj = (M)queue.peek();
 					return threadWorker.apply(obj);
