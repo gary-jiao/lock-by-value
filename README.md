@@ -7,6 +7,6 @@
 	每次循环里，都会把没有重复的数据提交处理，所有使用的无限while循环的方式，一直到集合里没有数据为止。因为没有使用到Java8的特性，代码理论上应该可以在Java5以上的平台运行。
 	但因为开发是在Java8下，如果在8以下版本使用，代码里可能要做些微修改。
 	
-- ParallelWithDifferentKeyStreamExecutor
+- ParallelWithDifferentKeyStreamExecutor  
 	使用Java8的lambda写法以及CompletableFuture来完成功能，代码上更精简，但限制运行平台必须是Java8以上。
 	
